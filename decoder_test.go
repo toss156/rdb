@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cupcake/rdb"
+	"github.com/dongmx/rdb"
 	. "gopkg.in/check.v1"
 )
 
@@ -181,6 +181,25 @@ func (s *DecoderSuite) TestRDBv7(c *C) {
 	c.Assert(z[2], Equals, "boo")
 }
 
+func (s *DecoderSuite) TestV9Set(c *C) {
+	r := decodeRDB("v9_set")
+	for i, x := range []string{"test02", "test01"} {
+		c.Assert(r.dbs[0]["test"].([]string)[i], Equals, x)
+	}
+}
+
+func (s *DecoderSuite) TestV9Zset(c *C) {
+	r := decodeRDB("v9_zset")
+	z := r.dbs[0]["test"].(map[string]float64)
+	c.Assert(z["0.1"], Equals, float64(0.1))
+	c.Assert(z["0.2"], Equals, float64(0.2))
+}
+
+func (s *DecoderSuite) TestStream(c *C) {
+	r := decodeRDB("stream")
+	c.Assert(r.aux["redis-ver"], Equals, "4.9.101")
+}
+
 func (s *DecoderSuite) TestDumpDecoder(c *C) {
 	r := &FakeRedis{}
 	err := rdb.DecodeDump([]byte("\u0000\xC0\n\u0006\u0000\xF8r?\xC5\xFB\xFB_("), 1, []byte("test"), 123, r)
@@ -321,6 +340,23 @@ func (r *FakeRedis) Zadd(key []byte, score float64, member []byte) {
 }
 
 func (r *FakeRedis) EndZSet(key []byte) {
+	actual := len(r.db()[string(key)].(map[string]float64))
+	if actual != r.getLength(key) {
+		panic(fmt.Sprintf("wrong length for key %s got %d, expected %d", key, actual, r.getLength(key)))
+	}
+}
+
+func (r *FakeRedis) StartStream(key []byte, cardinality, expiry int64) {
+	r.setExpiry(key, expiry)
+	r.setLength(key, cardinality)
+	r.db()[string(key)] = make(map[string]string)
+}
+
+func (r *FakeRedis) Xadd(key []byte, id, listpacks []byte) {
+	r.db()[string(key)].(map[string]string)[string(listpacks)] = string(id)
+}
+
+func (r *FakeRedis) EndStream(key []byte) {
 	actual := len(r.db()[string(key)].(map[string]float64))
 	if actual != r.getLength(key) {
 		panic(fmt.Sprintf("wrong length for key %s got %d, expected %d", key, actual, r.getLength(key)))
