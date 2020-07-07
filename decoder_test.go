@@ -217,6 +217,7 @@ func decodeRDB(name string) *FakeRedis {
 	}
 	err = rdb.Decode(f, r)
 	if err != nil {
+		fmt.Printf("%+v\n", err)
 		panic(err)
 	}
 	return r
@@ -252,7 +253,7 @@ func (r *FakeRedis) db() map[string]interface{} {
 	return r.dbs[r.cdb]
 }
 
-func (r *FakeRedis) StartRDB() {
+func (r *FakeRedis) StartRDB(rdbVer int) {
 	r.started++
 	r.dbs = make(map[int]map[string]interface{})
 	r.expiries = make(map[int]map[string]int64)
@@ -269,12 +270,12 @@ func (r *FakeRedis) StartDatabase(n int) {
 	r.cdb = n
 }
 
-func (r *FakeRedis) Set(key, value []byte, expiry int64) {
+func (r *FakeRedis) Set(key, value []byte, expiry int64, info *rdb.Info) {
 	r.setExpiry(key, expiry)
 	r.db()[string(key)] = string(value)
 }
 
-func (r *FakeRedis) StartHash(key []byte, length, expiry int64) {
+func (r *FakeRedis) StartHash(key []byte, length, expiry int64, info *rdb.Info) {
 	r.setExpiry(key, expiry)
 	r.setLength(key, length)
 	r.db()[string(key)] = make(map[string]string)
@@ -291,7 +292,7 @@ func (r *FakeRedis) EndHash(key []byte) {
 	}
 }
 
-func (r *FakeRedis) StartSet(key []byte, cardinality, expiry int64) {
+func (r *FakeRedis) StartSet(key []byte, cardinality, expiry int64, info *rdb.Info) {
 	r.setExpiry(key, expiry)
 	r.setLength(key, cardinality)
 	r.db()[string(key)] = make([]string, 0, cardinality)
@@ -308,7 +309,7 @@ func (r *FakeRedis) EndSet(key []byte) {
 	}
 }
 
-func (r *FakeRedis) StartList(key []byte, length, expiry int64) {
+func (r *FakeRedis) StartList(key []byte, length, expiry int64, info *rdb.Info) {
 	r.setExpiry(key, expiry)
 	r.setLength(key, length)
 	cap := length
@@ -329,7 +330,7 @@ func (r *FakeRedis) EndList(key []byte) {
 	}
 }
 
-func (r *FakeRedis) StartZSet(key []byte, cardinality, expiry int64) {
+func (r *FakeRedis) StartZSet(key []byte, cardinality, expiry int64, info *rdb.Info) {
 	r.setExpiry(key, expiry)
 	r.setLength(key, cardinality)
 	r.db()[string(key)] = make(map[string]float64)
@@ -346,7 +347,7 @@ func (r *FakeRedis) EndZSet(key []byte) {
 	}
 }
 
-func (r *FakeRedis) StartStream(key []byte, cardinality, expiry int64) {
+func (r *FakeRedis) StartStream(key []byte, cardinality, expiry int64, info *rdb.Info) {
 	r.setExpiry(key, expiry)
 	r.setLength(key, cardinality)
 	r.db()[string(key)] = make(map[string]string)
@@ -356,10 +357,19 @@ func (r *FakeRedis) Xadd(key []byte, id, listpacks []byte) {
 	r.db()[string(key)].(map[string]string)[string(listpacks)] = string(id)
 }
 
-func (r *FakeRedis) EndStream(key []byte) {
-	actual := len(r.db()[string(key)].(map[string]float64))
+func (r *FakeRedis) EndStream(key []byte, items uint64, lastEntryID string, cgroupsData rdb.StreamGroups) {
+	actual := len(r.db()[string(key)].(map[string]string))
 	if actual != r.getLength(key) {
 		panic(fmt.Sprintf("wrong length for key %s got %d, expected %d", key, actual, r.getLength(key)))
+	}
+	if items != 27 {
+		panic(fmt.Sprintf("expect items: %d got %d", 27, items))
+	}
+	if lastEntryID != "1528029466486-0" {
+		panic(fmt.Sprintf("expect lastEntryID:%s got %s", "1528029466486-0", lastEntryID))
+	}
+	if len(cgroupsData) != 0 {
+		panic(fmt.Sprintf("len(cgroupsData) != 0"))
 	}
 }
 
