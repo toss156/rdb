@@ -10,7 +10,7 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/dongmx/rdb/crc64"
+	"github.com/fengqi/rdb/crc64"
 	"github.com/juju/errors"
 )
 
@@ -149,6 +149,7 @@ type decode struct {
 type ValueType byte
 
 // type value
+// https://github.com/redis/redis/blob/7.0/src/rdb.h
 const (
 	TypeString  ValueType = 0
 	TypeList    ValueType = 1
