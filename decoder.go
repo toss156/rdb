@@ -10,8 +10,8 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/fengqi/rdb/crc64"
 	"github.com/juju/errors"
+	"github.com/toss156/rdb/crc64"
 )
 
 type Info struct {

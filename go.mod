@@ -1,4 +1,4 @@
-module github.com/fengqi/rdb
+module github.com/toss156/rdb
 
 go 1.14
 
